@@ -34,7 +34,7 @@ function likeToDo() {
                     viewDepartments();
                     break;
                 case "View roles":
-                    console.log("You have chosen view roles");
+                    viewRoles();
                     break;
                 case "Add an employee":
                     console.log("add ane mployee");
@@ -100,6 +100,37 @@ function viewDepartments() {
                         console.table(res);
                         likeToDo();
                     })
+            })
+    })
+}
+
+function viewRoles(){
+    connection.query("SELECT role.title, role.salary, department.name AS department FROM role LEFT JOIN department ON role.department_id = department.id", function(err, res){
+        if (err) throw err;
+        var rolesArray = [];
+        console.table(res);
+        for (i = 0; i < res.length; i++){
+            rolesArray.push(res[i].title)
+        }
+        rolesArray.push("No, take me back to start");
+        inquirer
+            .prompt([{
+                type: 'list',
+                message: "Would you like to view all of the employees in a role?",
+                name: "viewOneRoleEmployees",
+                choices: rolesArray
+            }
+            ]).then(function(response){
+                console.log(response.viewOneRoleEmployees);
+                if (response.viewOneRoleEmployees !== "No, take me back to start"){
+                    connection.query("SELECT role.title, employee.first_name, employee.last_name FROM role LEFT JOIN employee ON role.id = employee.role_id WHERE ?", {
+                        title: response.viewOneRoleEmployees
+                    }, function(err, res){
+                        if (err) throw err;
+                        console.table(res);
+                    })
+                }
+                else likeToDo();
             })
     })
 }

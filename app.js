@@ -37,11 +37,10 @@ function likeToDo() {
                     viewRoles();
                     break;
                 case "Add an employee":
-                    console.log("add ane mployee");
                     addEmployee();
                     break;
                 case "Add a department":
-                    console.log("add a department")
+                    addDepartment();
                     break;
                 case "Add a role":
                     console.log("Add a role");
@@ -264,6 +263,22 @@ function insertNewEmployee(employeeValues){
                 reject(err)
             }
             resolve(res);
+        })
+    })
+}
+
+function addDepartment(){
+    inquirer
+    .prompt([
+        {
+            type: "input",
+            message: "What is the name of the new department?",
+            name: "newDeptName"
+        }
+    ]).then(function(response){
+        connection.query("INSERT INTO department (name) VALUES (?)", [response.newDeptName], function(err, res){
+            if (err) throw err;
+            console.log("Successfully added department");
         })
     })
 }

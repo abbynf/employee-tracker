@@ -12,6 +12,7 @@ const connection = mysql.createConnection({
 connection.connect(function (err) {
     if (err) throw err;
     console.log("connected", connection.threadId);
+    likeToDo();
 })
 
 function likeToDo() {
@@ -25,7 +26,6 @@ function likeToDo() {
             }
         ])
         .then(function (response) {
-            console.log("you have chosen " + response.likeToDo);
             switch (response.likeToDo) {
                 case "View employees":
                     viewEmployees();
@@ -38,6 +38,7 @@ function likeToDo() {
                     break;
                 case "Add an employee":
                     console.log("add ane mployee");
+                    addEmployee();
                     break;
                 case "Add a department":
                     console.log("add a department")
@@ -104,12 +105,12 @@ function viewDepartments() {
     })
 }
 
-function viewRoles(){
-    connection.query("SELECT role.title, role.salary, department.name AS department FROM role LEFT JOIN department ON role.department_id = department.id", function(err, res){
+function viewRoles() {
+    connection.query("SELECT role.title, role.salary, department.name AS department FROM role LEFT JOIN department ON role.department_id = department.id", function (err, res) {
         if (err) throw err;
         var rolesArray = [];
         console.table(res);
-        for (i = 0; i < res.length; i++){
+        for (i = 0; i < res.length; i++) {
             rolesArray.push(res[i].title)
         }
         rolesArray.push("No, take me back to start");
@@ -120,12 +121,12 @@ function viewRoles(){
                 name: "viewOneRoleEmployees",
                 choices: rolesArray
             }
-            ]).then(function(response){
+            ]).then(function (response) {
                 console.log(response.viewOneRoleEmployees);
-                if (response.viewOneRoleEmployees !== "No, take me back to start"){
+                if (response.viewOneRoleEmployees !== "No, take me back to start") {
                     connection.query("SELECT role.title, employee.first_name, employee.last_name FROM role LEFT JOIN employee ON role.id = employee.role_id WHERE ?", {
                         title: response.viewOneRoleEmployees
-                    }, function(err, res){
+                    }, function (err, res) {
                         if (err) throw err;
                         console.table(res);
                     })
@@ -135,5 +136,134 @@ function viewRoles(){
     })
 }
 
-likeToDo();
+function addEmployee() {
+    var employeesArray;
+    var rolesArray;
+    var reultsOfInquirer;
+    var newValues = [];
 
+    allEmployees.then(function (result) {
+        employeesArray = result;
+        return allRoles;
+    }).then(function (newResult) {
+        rolesArray = newResult;
+        return newEmployeeQuestions(rolesArray, employeesArray)
+    }).then(function (inquirerResults) {
+        reultsOfInquirer = inquirerResults;
+        console.log(reultsOfInquirer);
+        newValues.push(reultsOfInquirer.employeeFirst);
+        newValues.push(reultsOfInquirer.employeeLast);
+        return roleToId(reultsOfInquirer.employeeRole);
+    }).then(function (roleResults) {
+        newValues.push(roleResults);
+        if (reultsOfInquirer.chooseManager !== "No manager") {
+            console.log("ye have chosen a manager")
+            var splitManager = reultsOfInquirer.chooseManager.split(" ");
+            var managerFirst = splitManager[0];
+            var managerLast = splitManager[1];
+            return managerNameToId(managerFirst, managerLast)
+        } else {
+            return null;
+        }
+    }).then(function (resultOfManager){
+        newValues.push(resultOfManager);
+        insertNewEmployee(newValues);
+    })
+}
+
+
+function newEmployeeQuestions(rolesArray, employeesArray) {
+    return new Promise((resolve, reject) => {
+        inquirer
+            .prompt([
+                {
+                    type: "input",
+                    message: "What is the first name of the employee?",
+                    name: "employeeFirst"
+                },
+                {
+                    type: "input",
+                    message: "What is the last name of the employee?",
+                    name: "employeeLast"
+                },
+                {
+                    type: "list",
+                    message: "What is the role of the employee?",
+                    choices: rolesArray,
+                    name: "employeeRole"
+                },
+                {
+                    type: "list",
+                    message: "Who is this employee's manager?",
+                    choices: employeesArray,
+                    name: 'chooseManager'
+                }
+
+            ]).then(function (response) {
+                resolve(response);
+            })
+    }
+    )
+}
+
+
+
+
+
+let allEmployees = new Promise((resolve, reject) => {
+    connection.query("SELECT first_name, last_name FROM employee", function (err, res) {
+        if (err) throw err;
+        var employeeArray = [];
+        for (i = 0; i < res.length; i++) {
+            var wholeName = res[i].first_name.concat(' ', res[i].last_name);
+            employeeArray.push(wholeName);
+        }
+        employeeArray.push("No manager");
+        resolve(employeeArray);
+    })
+})
+
+let allRoles = new Promise((resolve, reject) => {
+    var rolesArray = [];
+    connection.query("SELECT title FROM role", function (err, res) {
+        if (err) throw err;
+        for (i = 0; i < res.length; i++) {
+            rolesArray.push(res[i].title)
+        }
+        resolve(rolesArray);
+    })
+})
+
+function roleToId(title) {
+    return new Promise((resolve, reject) => {
+        connection.query("SELECT id FROM role WHERE title=?", [title], function (err, res) {
+            if (err) {
+                reject(err)
+            };
+            resolve(res[0].id);
+        })
+    })
+}
+
+function managerNameToId(manFirstName, manLastName){
+    return new Promise((resolve, reject) => {
+        connection.query("SELECT id FROM employee WHERE first_name=? AND last_name=?", [manFirstName, manLastName], function(err, res){
+            if (err){
+                reject(err)
+            }
+            resolve(res[0].id)
+        })
+    })
+}
+
+function insertNewEmployee(employeeValues){
+    return new Promise((resolve, reject) => {
+        console.log(employeeValues);
+        connection.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?)', [employeeValues], function(err, res){
+            if (err){
+                reject(err)
+            }
+            resolve(res);
+        })
+    })
+}

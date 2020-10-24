@@ -47,21 +47,13 @@ function likeToDo() {
                     break;
                 case "Update an employee":
                     console.log("update employee");
+                    updateEmployee();
                     break;
                 case "Update a department":
                     console.log("update a department");
                     break;
                 case "Update a role":
                     console.log("update a role");
-                    break;
-                case "Remove an employee":
-                    console.log("remove employee");
-                    break;
-                case "Remove a department":
-                    console.log("remove department");
-                    break;
-                case "Remove a role":
-                    console.log("remove role")
                     break;
             }
 
@@ -136,12 +128,13 @@ function viewRoles() {
 }
 
 function addEmployee() {
-    var employeesArray;
-    var rolesArray;
+    var employeesArray = [];
+    var rolesArray = [];
     var reultsOfInquirer;
     var newValues = [];
 
     allEmployees.then(function (result) {
+        result.push("No manager");
         employeesArray = result;
         return allRoles;
     }).then(function (newResult) {
@@ -165,6 +158,8 @@ function addEmployee() {
     }).then(function (resultOfManager) {
         newValues.push(resultOfManager);
         insertNewEmployee(newValues);
+        console.log("Success!")
+        return likeToDo();
     })
 }
 
@@ -215,7 +210,6 @@ let allEmployees = new Promise((resolve, reject) => {
             var wholeName = res[i].first_name.concat(' ', res[i].last_name);
             employeeArray.push(wholeName);
         }
-        employeeArray.push("No manager");
         resolve(employeeArray);
     })
 })
@@ -357,5 +351,34 @@ function insertRole(valuesArray){
             console.log("Succesfully created role")
             return (res);
         })
+    })
+}
+
+function updateEmployee(){
+    // pull list of employees
+    // inquirer ask whch employees, update each field
+    allEmployees.then(function(empList){
+        console.log(empList);
+        var ind = empList.length - 1;
+        var empchoices = empList.splice(3, 0);
+        console.log(empchoices)
+    })
+}
+
+function whichEmployee(){
+    return new Promise((resolve, reject) => {
+
+    })
+}
+
+function updEmptQuestions() {
+    return new Promise((resolve, reject) => {
+        inquirer
+        .prompt([
+            {
+                type: "input",
+                message: ""
+            }
+        ])
     })
 }

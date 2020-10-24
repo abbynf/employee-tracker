@@ -5,7 +5,7 @@ const connection = mysql.createConnection({
     host: 'localhost',
     port: 3306,
     user: 'root',
-    password: "",
+    password: "@Ecuador14",
     database: "employee_db"
 })
 
@@ -43,7 +43,7 @@ function likeToDo() {
                     addDepartment();
                     break;
                 case "Add a role":
-                    console.log("Add a role");
+                    addRole();
                     break;
                 case "Update an employee":
                     console.log("update employee");
@@ -149,14 +149,12 @@ function addEmployee() {
         return newEmployeeQuestions(rolesArray, employeesArray)
     }).then(function (inquirerResults) {
         reultsOfInquirer = inquirerResults;
-        console.log(reultsOfInquirer);
         newValues.push(reultsOfInquirer.employeeFirst);
         newValues.push(reultsOfInquirer.employeeLast);
         return roleToId(reultsOfInquirer.employeeRole);
     }).then(function (roleResults) {
         newValues.push(roleResults);
         if (reultsOfInquirer.chooseManager !== "No manager") {
-            console.log("ye have chosen a manager")
             var splitManager = reultsOfInquirer.chooseManager.split(" ");
             var managerFirst = splitManager[0];
             var managerLast = splitManager[1];
@@ -164,7 +162,7 @@ function addEmployee() {
         } else {
             return null;
         }
-    }).then(function (resultOfManager){
+    }).then(function (resultOfManager) {
         newValues.push(resultOfManager);
         insertNewEmployee(newValues);
     })
@@ -244,10 +242,10 @@ function roleToId(title) {
     })
 }
 
-function managerNameToId(manFirstName, manLastName){
+function managerNameToId(manFirstName, manLastName) {
     return new Promise((resolve, reject) => {
-        connection.query("SELECT id FROM employee WHERE first_name=? AND last_name=?", [manFirstName, manLastName], function(err, res){
-            if (err){
+        connection.query("SELECT id FROM employee WHERE first_name=? AND last_name=?", [manFirstName, manLastName], function (err, res) {
+            if (err) {
                 reject(err)
             }
             resolve(res[0].id)
@@ -255,11 +253,10 @@ function managerNameToId(manFirstName, manLastName){
     })
 }
 
-function insertNewEmployee(employeeValues){
+function insertNewEmployee(employeeValues) {
     return new Promise((resolve, reject) => {
-        console.log(employeeValues);
-        connection.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?)', [employeeValues], function(err, res){
-            if (err){
+        connection.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?)', [employeeValues], function (err, res) {
+            if (err) {
                 reject(err)
             }
             resolve(res);
@@ -267,18 +264,98 @@ function insertNewEmployee(employeeValues){
     })
 }
 
-function addDepartment(){
+function addDepartment() {
     inquirer
-    .prompt([
-        {
-            type: "input",
-            message: "What is the name of the new department?",
-            name: "newDeptName"
-        }
-    ]).then(function(response){
-        connection.query("INSERT INTO department (name) VALUES (?)", [response.newDeptName], function(err, res){
-            if (err) throw err;
-            console.log("Successfully added department");
+        .prompt([
+            {
+                type: "input",
+                message: "What is the name of the new department?",
+                name: "newDeptName"
+            }
+        ]).then(function (response) {
+            connection.query("INSERT INTO department (name) VALUES (?)", [response.newDeptName], function (err, res) {
+                if (err) throw err;
+                console.log("Successfully added department");
+            })
+        })
+}
+
+function addRole() {
+    var newRoleValues = [];
+    departmentList().then(function (deptResult) {
+        console.log(deptResult);
+        return roleQuestions(deptResult);
+    }).then(function (roleInqResults) {
+        newRoleValues.push(roleInqResults.newTitle);
+        newRoleValues.push(roleInqResults.roleSalary);
+        return deptToId(roleInqResults.roleDept);
+    }).then(function(deptId){
+        newRoleValues.push(deptId);
+        return insertRole(newRoleValues);
+    })
+}
+
+function departmentList() {
+    return new Promise((resolve, reject) => {
+        connection.query("SELECT name FROM department", function (err, res) {
+            if (err) {
+                reject(err);
+            }
+            var deptArray = [];
+            for (i = 0; i < res.length; i++) {
+                deptArray.push(res[i].name);
+            }
+            resolve(deptArray);
+        })
+    })
+}
+
+function roleQuestions(choiArr) {
+    return new Promise((resolve, reject) => {
+
+        inquirer
+            .prompt([
+                {
+                    type: "input",
+                    message: "What is the new title?",
+                    name: "newTitle"
+                },
+                {
+                    type: "input",
+                    message: "What is the salary?",
+                    name: "roleSalary"
+                },
+                {
+                    type: "list",
+                    message: "What department does the role belong to?",
+                    name: "roleDept",
+                    choices: choiArr
+                }
+            ]).then(function (response) {
+                resolve(response);
+            })
+    })
+}
+
+function deptToId(dept) {
+    return new Promise((resolve, reject) => {
+        connection.query("SELECT id FROM department WHERE name=?", [dept], function (err, res) {
+            if (err) {
+                reject(err)
+            };
+            resolve(res[0].id);
+        })
+    })
+}
+
+function insertRole(valuesArray){
+    return new Promise((resolve, reject) => {
+        connection.query("INSERT INTO role (title, salary, department_id) VALUES (?)", [valuesArray], function(err, res){
+            if (err){
+                reject(err);
+            }
+            console.log("Succesfully created role")
+            return (res);
         })
     })
 }

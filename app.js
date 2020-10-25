@@ -118,6 +118,7 @@ function viewRoles() {
                     }, function (err, res) {
                         if (err) throw err;
                         console.table(res);
+                        likeToDo();
                     })
                 }
                 else likeToDo();
@@ -131,10 +132,10 @@ function addEmployee() {
     var reultsOfInquirer;
     var newValues = [];
 
-    allEmployees.then(function (result) {
+    allEmployees().then(function (result) {
         result.push("No manager");
         employeesArray = result;
-        return allRoles;
+        return allRoles();
     }).then(function (newResult) {
         rolesArray = newResult;
         return newEmployeeQuestions(rolesArray, employeesArray)
@@ -200,28 +201,36 @@ function newEmployeeQuestions(rolesArray, employeesArray) {
 
 
 
-let allEmployees = new Promise((resolve, reject) => {
-    connection.query("SELECT first_name, last_name FROM employee", function (err, res) {
-        if (err) throw err;
-        var employeeArray = [];
-        for (i = 0; i < res.length; i++) {
-            var wholeName = res[i].first_name.concat(' ', res[i].last_name);
-            employeeArray.push(wholeName);
-        }
-        resolve(employeeArray);
+function allEmployees() {
+    return new Promise((resolve, reject) => {
+        connection.query("SELECT first_name, last_name FROM employee", function (err, res) {
+            if (err) {
+                reject(err);
+            };
+            var employeeArray = [];
+            for (i = 0; i < res.length; i++) {
+                var wholeName = res[i].first_name.concat(' ', res[i].last_name);
+                employeeArray.push(wholeName);
+            }
+            resolve(employeeArray);
+        })
     })
-})
+}
 
-let allRoles = new Promise((resolve, reject) => {
-    var rolesArray = [];
-    connection.query("SELECT title FROM role", function (err, res) {
-        if (err) throw err;
-        for (i = 0; i < res.length; i++) {
-            rolesArray.push(res[i].title)
-        }
-        resolve(rolesArray);
+function allRoles() {
+    return new Promise((resolve, reject) => {
+        var rolesArray = [];
+        connection.query("SELECT title FROM role", function (err, res) {
+            if (err) {
+                reject(err)
+            }
+            for (i = 0; i < res.length; i++) {
+                rolesArray.push(res[i].title)
+            }
+            resolve(rolesArray);
+        })
     })
-})
+};
 
 function roleToId(title) {
     return new Promise((resolve, reject) => {
@@ -268,6 +277,7 @@ function addDepartment() {
             connection.query("INSERT INTO department (name) VALUES (?)", [response.newDeptName], function (err, res) {
                 if (err) throw err;
                 console.log("Successfully added department");
+                likeToDo();
             })
         })
 }
@@ -283,6 +293,8 @@ function addRole() {
     }).then(function (deptId) {
         newRoleValues.push(deptId);
         return insertRole(newRoleValues);
+    }).then(function (result) {
+        likeToDo();
     })
 }
 
@@ -346,7 +358,7 @@ function insertRole(valuesArray) {
                 reject(err);
             }
             console.log("Succesfully created role")
-            return (res);
+            resolve(res);
         })
     })
 }
@@ -357,11 +369,13 @@ function updateEmployee() {
     var managerArray = [];
     var newValues = [];
     var inqResults = [];
-    allEmployees.then(function (empList) {
+    allEmployees().then(function (empList) {
         employeeArray = empList;
-        managerArray = empList;
-        managerArray.push("No manager")
-        return allRoles;
+        return allEmployees()
+    }).then(function(manList){
+        manList.push("No manager");
+        managerArray = manList;
+        return allRoles();
     }).then(function (roleList) {
         rolesArray = roleList;
         return updateEmpInq(employeeArray, rolesArray, managerArray)
@@ -437,8 +451,7 @@ function updEmpDB(newValues) {
             if (err) {
                 reject(err)
             }
-            console.log(query.sql)
-            console.log("Success");
+            console.log("Successly updated employee");
             resolve(res);
         })
     })
@@ -459,8 +472,7 @@ function updateDept() {
             return updateDeptDB(newValues)
         }).then(function (results) {
             // alert user of success
-            console.log(results.message);
-            console.log("Success!")
+            console.log("Successfully updated department!")
             // send back to start
             likeToDo();
         })
@@ -504,7 +516,7 @@ function updateRole() {
     var newValues = [];
     var inqResults;
     // get list of roles that can be updated
-    allRoles.then(function (roleList) {
+    allRoles().then(function (roleList) {
         roleChoices = roleList;
         // get list of departments that the role can be sent to 
         return departmentList();
@@ -512,7 +524,7 @@ function updateRole() {
         deptChoices = deptList;
         // send both to inquirer function
         return updateRoleQuestions(roleChoices, deptChoices);
-    }).then(function(inqAnswers){
+    }).then(function (inqAnswers) {
         // Save inqAnswers so chosen role can be pushed to the back of the array
         inqResults = inqAnswers;
         // push values to new array
@@ -520,16 +532,15 @@ function updateRole() {
         newValues.push(inqAnswers.salary);
         // change department chosen to function to convert to id number
         return deptToId(inqAnswers.dept)
-    }).then(function(deptId){
+    }).then(function (deptId) {
         // push deptId to values array
         newValues.push(deptId);
         newValues.push(inqResults.chosenRole);
         // send values to function to update db
         return updateRoleDB(newValues);
-    }).then(function(result){
+    }).then(function (result) {
         // console log success
-        console.log("Success!")
-        console.log(result.message);
+        console.log("Successfully updated role!")
         // send back to start
         likeToDo();
     })
@@ -561,16 +572,16 @@ function updateRoleQuestions(roleChoices, deptChoices) {
                     choices: deptChoices,
                     name: "dept"
                 }
-            ]).then(function(response){
+            ]).then(function (response) {
                 resolve(response);
             })
     })
 }
 
-function updateRoleDB(newValues){
+function updateRoleDB(newValues) {
     return new Promise((resolve, reject) => {
-        connection.query("UPDATE role SET title=?, salary=?, department_id=? WHERE title=?", newValues, function(err, res){
-            if (err){
+        connection.query("UPDATE role SET title=?, salary=?, department_id=? WHERE title=?", newValues, function (err, res) {
+            if (err) {
                 reject(err);
             }
             resolve(res);

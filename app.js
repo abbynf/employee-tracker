@@ -50,6 +50,7 @@ function likeToDo() {
                     break;
                 case "Update a department":
                     console.log("update a department");
+                    updateDept();
                     break;
                 case "Update a role":
                     console.log("update a role");
@@ -282,7 +283,7 @@ function addRole() {
         newRoleValues.push(roleInqResults.newTitle);
         newRoleValues.push(roleInqResults.roleSalary);
         return deptToId(roleInqResults.roleDept);
-    }).then(function(deptId){
+    }).then(function (deptId) {
         newRoleValues.push(deptId);
         return insertRole(newRoleValues);
     })
@@ -341,10 +342,10 @@ function deptToId(dept) {
     })
 }
 
-function insertRole(valuesArray){
+function insertRole(valuesArray) {
     return new Promise((resolve, reject) => {
-        connection.query("INSERT INTO role (title, salary, department_id) VALUES (?)", [valuesArray], function(err, res){
-            if (err){
+        connection.query("INSERT INTO role (title, salary, department_id) VALUES (?)", [valuesArray], function (err, res) {
+            if (err) {
                 reject(err);
             }
             console.log("Succesfully created role")
@@ -353,26 +354,26 @@ function insertRole(valuesArray){
     })
 }
 
-function updateEmployee(){
+function updateEmployee() {
     var employeeArray = [];
     var rolesArray = [];
     var managerArray = [];
     var newValues = [];
     var inqResults = [];
-    allEmployees.then(function(empList){
+    allEmployees.then(function (empList) {
         employeeArray = empList;
         managerArray = empList;
         managerArray.push("No manager")
         return allRoles;
-    }).then(function(roleList){
+    }).then(function (roleList) {
         rolesArray = roleList;
         return updateEmpInq(employeeArray, rolesArray, managerArray)
-    }).then(function(empInqAnswers){
+    }).then(function (empInqAnswers) {
         newValues.push(empInqAnswers.empFirst);
         newValues.push(empInqAnswers.empLast);
         inqResults = empInqAnswers;
         return roleToId(empInqAnswers.empRole)
-    }).then(function(roleId){
+    }).then(function (roleId) {
         newValues.push(roleId);
         if (inqResults.empMan !== "No manager") {
             var splitManager = inqResults.empMan.split(" ");
@@ -382,7 +383,7 @@ function updateEmployee(){
         } else {
             return null;
         }
-    }).then(function(manResult){
+    }).then(function (manResult) {
         newValues.push(manResult);
         var splitChosen = inqResults.chosenEmployee.split(" ");
         var chosenFirst = splitChosen[0];
@@ -394,10 +395,10 @@ function updateEmployee(){
     })
 }
 
-function updateEmpInq(employeeArray, rolesArray, managerArray){
+function updateEmpInq(employeeArray, rolesArray, managerArray) {
     return new Promise((resolve, reject) => {
 
-        inquirer 
+        inquirer
             .prompt([
                 {
                     type: "list",
@@ -427,20 +428,74 @@ function updateEmpInq(employeeArray, rolesArray, managerArray){
                     choices: managerArray,
                     name: "empMan"
                 }
-            ]).then(function(response){
+            ]).then(function (response) {
                 resolve(response);
             })
     })
 }
 
-function updEmpDB(newValues){
+function updEmpDB(newValues) {
     return new Promise((resolve, reject) => {
-        var query = connection.query("UPDATE employee SET first_name=?, last_name=?, role_id=?, manager_id=? WHERE first_name=? AND last_name=?", newValues, function(err, res){
-            if (err){
+        var query = connection.query("UPDATE employee SET first_name=?, last_name=?, role_id=?, manager_id=? WHERE first_name=? AND last_name=?", newValues, function (err, res) {
+            if (err) {
                 reject(err)
             }
             console.log(query.sql)
             console.log("Success");
+            resolve(res);
+        })
+    })
+}
+
+function updateDept() {
+    var newValues = [];
+    // get list of departments
+    departmentList()
+        .then(function (deptList) {
+            // send the list of departments to function to ask which department would they like to change, change it to
+            return chooseDept(deptList);
+        }).then(function(inqResults){
+            // format responses to be put into UPDATE query
+            newValues.push(inqResults.newDeptName);
+            newValues.push(inqResults.chosenDept);
+            // send results to function to update DB
+            return updateDeptDB(newValues)
+        }).then(function(results){
+            // alert user of success
+            console.log(results.message);
+            console.log("Success!")
+            // send back to start
+            likeToDo();
+        })
+}
+
+function chooseDept(deptList) {
+    return new Promise((resolve, reject) => {
+        inquirer
+            .prompt([
+                {
+                    type: "list",
+                    message: "Which department would you like to update?",
+                    choices: deptList,
+                    name: "chosenDept"
+                },
+                {
+                    type: "input",
+                    message: "Update the department name to:",
+                    name: "newDeptName"
+                }
+            ]).then(function(response){
+                resolve(response)
+            })
+    })
+}
+
+function updateDeptDB(newValues){
+    return new Promise((resolve, reject) => {
+        connection.query("UPDATE department SET name=? WHERE name=?", newValues, function(err, res){
+            if (err){
+                reject(err)
+            }
             resolve(res);
         })
     })

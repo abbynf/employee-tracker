@@ -52,7 +52,6 @@ function likeToDo() {
                     updateDept();
                     break;
                 case "Update a role":
-                    console.log("update a role");
                     updateRole();
                     break;
             }
@@ -113,7 +112,6 @@ function viewRoles() {
                 choices: rolesArray
             }
             ]).then(function (response) {
-                console.log(response.viewOneRoleEmployees);
                 if (response.viewOneRoleEmployees !== "No, take me back to start") {
                     connection.query("SELECT role.title, employee.first_name, employee.last_name FROM role LEFT JOIN employee ON role.id = employee.role_id WHERE ?", {
                         title: response.viewOneRoleEmployees
@@ -277,7 +275,6 @@ function addDepartment() {
 function addRole() {
     var newRoleValues = [];
     departmentList().then(function (deptResult) {
-        console.log(deptResult);
         return roleQuestions(deptResult);
     }).then(function (roleInqResults) {
         newRoleValues.push(roleInqResults.newTitle);
@@ -527,7 +524,6 @@ function updateRole() {
         // push deptId to values array
         newValues.push(deptId);
         newValues.push(inqResults.chosenRole);
-        console.log(newValues);
         // send values to function to update db
         return updateRoleDB(newValues);
     }).then(function(result){

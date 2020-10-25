@@ -21,7 +21,7 @@ function likeToDo() {
             {
                 type: "list",
                 message: "What would you like to do?",
-                choices: ["View employees", "View departments", "View roles", "Add an employee", "Add a department", "Add a role", "Update an employee", "Update a department", "Update a role", "Remove an employee", "Remove a role", "Remove a department"],
+                choices: ["View employees", "View departments", "View roles", "Add an employee", "Add a department", "Add a role", "Update an employee", "Update a department", "Update a role"],
                 name: "likeToDo"
             }
         ])
@@ -49,11 +49,11 @@ function likeToDo() {
                     updateEmployee();
                     break;
                 case "Update a department":
-                    console.log("update a department");
                     updateDept();
                     break;
                 case "Update a role":
                     console.log("update a role");
+                    updateRole();
                     break;
             }
 
@@ -454,13 +454,13 @@ function updateDept() {
         .then(function (deptList) {
             // send the list of departments to function to ask which department would they like to change, change it to
             return chooseDept(deptList);
-        }).then(function(inqResults){
+        }).then(function (inqResults) {
             // format responses to be put into UPDATE query
             newValues.push(inqResults.newDeptName);
             newValues.push(inqResults.chosenDept);
             // send results to function to update DB
             return updateDeptDB(newValues)
-        }).then(function(results){
+        }).then(function (results) {
             // alert user of success
             console.log(results.message);
             console.log("Success!")
@@ -484,17 +484,98 @@ function chooseDept(deptList) {
                     message: "Update the department name to:",
                     name: "newDeptName"
                 }
-            ]).then(function(response){
+            ]).then(function (response) {
                 resolve(response)
             })
     })
 }
 
-function updateDeptDB(newValues){
+function updateDeptDB(newValues) {
     return new Promise((resolve, reject) => {
-        connection.query("UPDATE department SET name=? WHERE name=?", newValues, function(err, res){
-            if (err){
+        connection.query("UPDATE department SET name=? WHERE name=?", newValues, function (err, res) {
+            if (err) {
                 reject(err)
+            }
+            resolve(res);
+        })
+    })
+}
+
+function updateRole() {
+    var roleChoices = [];
+    var deptChoices = [];
+    var newValues = [];
+    var inqResults;
+    // get list of roles that can be updated
+    allRoles.then(function (roleList) {
+        roleChoices = roleList;
+        // get list of departments that the role can be sent to 
+        return departmentList();
+    }).then(function (deptList) {
+        deptChoices = deptList;
+        // send both to inquirer function
+        return updateRoleQuestions(roleChoices, deptChoices);
+    }).then(function(inqAnswers){
+        // Save inqAnswers so chosen role can be pushed to the back of the array
+        inqResults = inqAnswers;
+        // push values to new array
+        newValues.push(inqAnswers.roleName);
+        newValues.push(inqAnswers.salary);
+        // change department chosen to function to convert to id number
+        return deptToId(inqAnswers.dept)
+    }).then(function(deptId){
+        // push deptId to values array
+        newValues.push(deptId);
+        newValues.push(inqResults.chosenRole);
+        console.log(newValues);
+        // send values to function to update db
+        return updateRoleDB(newValues);
+    }).then(function(result){
+        // console log success
+        console.log("Success!")
+        console.log(result.message);
+        // send back to start
+        likeToDo();
+    })
+}
+
+function updateRoleQuestions(roleChoices, deptChoices) {
+    return new Promise((resolve, reject) => {
+        inquirer
+            .prompt([
+                {
+                    type: "list",
+                    message: "Which role would you like to update?",
+                    choices: roleChoices,
+                    name: "chosenRole"
+                },
+                {
+                    type: "input",
+                    message: "Update title to:",
+                    name: "roleName"
+                },
+                {
+                    type: "input",
+                    message: "Update salary to:",
+                    name: "salary"
+                },
+                {
+                    type: "list",
+                    message: "Update department to:",
+                    choices: deptChoices,
+                    name: "dept"
+                }
+            ]).then(function(response){
+                resolve(response);
+            })
+    })
+}
+
+function updateRoleDB(newValues){
+    return new Promise((resolve, reject) => {
+        connection.query("UPDATE role SET title=?, salary=?, department_id=? WHERE title=?", newValues, function(err, res){
+            if (err){
+                reject(err);
             }
             resolve(res);
         })

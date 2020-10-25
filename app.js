@@ -5,7 +5,7 @@ const connection = mysql.createConnection({
     host: 'localhost',
     port: 3306,
     user: 'root',
-    password: "@Ecuador14",
+    password: "",
     database: "employee_db"
 })
 
@@ -46,7 +46,6 @@ function likeToDo() {
                     addRole();
                     break;
                 case "Update an employee":
-                    console.log("update employee");
                     updateEmployee();
                     break;
                 case "Update a department":
@@ -355,30 +354,94 @@ function insertRole(valuesArray){
 }
 
 function updateEmployee(){
-    // pull list of employees
-    // inquirer ask whch employees, update each field
+    var employeeArray = [];
+    var rolesArray = [];
+    var managerArray = [];
+    var newValues = [];
+    var inqResults = [];
     allEmployees.then(function(empList){
-        console.log(empList);
-        var ind = empList.length - 1;
-        var empchoices = empList.splice(3, 0);
-        console.log(empchoices)
+        employeeArray = empList;
+        managerArray = empList;
+        managerArray.push("No manager")
+        return allRoles;
+    }).then(function(roleList){
+        rolesArray = roleList;
+        return updateEmpInq(employeeArray, rolesArray, managerArray)
+    }).then(function(empInqAnswers){
+        newValues.push(empInqAnswers.empFirst);
+        newValues.push(empInqAnswers.empLast);
+        inqResults = empInqAnswers;
+        return roleToId(empInqAnswers.empRole)
+    }).then(function(roleId){
+        newValues.push(roleId);
+        if (inqResults.empMan !== "No manager") {
+            var splitManager = inqResults.empMan.split(" ");
+            var managerFirst = splitManager[0];
+            var managerLast = splitManager[1];
+            return managerNameToId(managerFirst, managerLast)
+        } else {
+            return null;
+        }
+    }).then(function(manResult){
+        newValues.push(manResult);
+        var splitChosen = inqResults.chosenEmployee.split(" ");
+        var chosenFirst = splitChosen[0];
+        var chosenLast = splitChosen[1];
+        newValues.push(chosenFirst);
+        newValues.push(chosenLast);
+        updEmpDB(newValues);
+        likeToDo();
     })
 }
 
-function whichEmployee(){
+function updateEmpInq(employeeArray, rolesArray, managerArray){
     return new Promise((resolve, reject) => {
 
+        inquirer 
+            .prompt([
+                {
+                    type: "list",
+                    message: "Which employee would you like to update?",
+                    choices: employeeArray,
+                    name: "chosenEmployee"
+                },
+                {
+                    type: "input",
+                    message: "What is the employee's first name?",
+                    name: "empFirst",
+                },
+                {
+                    type: "input",
+                    message: "What is the employee's last name?",
+                    name: "empLast"
+                },
+                {
+                    type: "list",
+                    message: "What is the employee's role?",
+                    choices: rolesArray,
+                    name: "empRole"
+                },
+                {
+                    type: "list",
+                    message: "Who is the employee's manager?",
+                    choices: managerArray,
+                    name: "empMan"
+                }
+            ]).then(function(response){
+                resolve(response);
+            })
     })
 }
 
-function updEmptQuestions() {
+function updEmpDB(newValues){
     return new Promise((resolve, reject) => {
-        inquirer
-        .prompt([
-            {
-                type: "input",
-                message: ""
+        var query = connection.query("UPDATE employee SET first_name=?, last_name=?, role_id=?, manager_id=? WHERE first_name=? AND last_name=?", newValues, function(err, res){
+            if (err){
+                reject(err)
             }
-        ])
+            console.log(query.sql)
+            console.log("Success");
+            resolve(res);
+        })
     })
 }
